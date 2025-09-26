@@ -1,7 +1,7 @@
 package edu.hitsz.aircraft;
 
 import edu.hitsz.bullet.BaseBullet;
-import edu.hitsz.strategy.EliteEnemyShootStrategy;
+import edu.hitsz.strategy.BossShootStrategy;
 
 import java.util.List;
 
@@ -11,13 +11,13 @@ import java.util.List;
  *
  * @author hitsz
  */
-public class EliteEnemy extends MobEnemy {
+public class Boss extends MobEnemy {
     /**攻击方式 */
 
     /**
      * 子弹一次发射数量
      */
-    private int shootNum = 1;
+    private int shootNum = 20;
 
     /**
      * 子弹伤害
@@ -25,9 +25,9 @@ public class EliteEnemy extends MobEnemy {
     private int power = 10;
 
     /**
-     * 子弹射击方向 (向上发射：-1，向下发射：1)
+     * 子弹射击方向 (向上发射：-1，向下发射：1，环形子弹：0)
      */
-    private int direction = 1;
+    private int direction = 0;
 
     /**
      * @param locationX 精英敌机位置x坐标
@@ -38,22 +38,22 @@ public class EliteEnemy extends MobEnemy {
      * @param score 击毁得分
      */
 
-    public EliteEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score) {
+    public Boss(int locationX, int locationY, int speedX, int speedY, int hp, int score) {
         super(locationX, locationY, speedX, speedY, hp, score);
         // 精英敌机可以射击
-        this.shootStrategy = new EliteEnemyShootStrategy();
+        this.shootStrategy = new BossShootStrategy();
     }
 
     @Override
     public List<BaseBullet> shoot() {
         return shootStrategy.shoot(
-            this.getLocationX(),
-            this.getLocationY(),
-            0,
-            this.getSpeedY() + direction * 5,
-            power,
-            shootNum,
-            direction
+                this.getLocationX(),
+                this.getLocationY(),
+                5,
+                5,
+                power,
+                shootNum,
+                direction
         );
     }
 

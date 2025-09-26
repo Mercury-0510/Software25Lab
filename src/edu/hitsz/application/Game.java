@@ -40,8 +40,11 @@ public class Game extends JPanel {
 
     /**
      * 屏幕中出现的敌机最大数量
+     * Boss是否出现
      */
     private int enemyMaxNumber = 5;
+    private int bossExist = 0;
+    private int scoreCount = 0;
 
     /**
      * 当前得分
@@ -65,10 +68,7 @@ public class Game extends JPanel {
     private boolean gameOverFlag = false;
 
     public Game() {
-        heroAircraft = new HeroAircraft(
-                Main.WINDOW_WIDTH / 2,
-                Main.WINDOW_HEIGHT - ImageManager.HERO_IMAGE.getHeight() ,
-                0, 0, 100);
+        heroAircraft = HeroAircraft.getInstance();
 
         enemyAircrafts = new LinkedList<>();
         heroBullets = new LinkedList<>();
@@ -103,8 +103,14 @@ public class Game extends JPanel {
             if (timeCountAndNewCycleJudge()) {
                 System.out.println(time);
                 // 新敌机产生
-                if(enemyAircrafts.size() <= enemyMaxNumber)
-                    enemyAircrafts.add(createEnemy());
+                if(enemyAircrafts.size() <= enemyMaxNumber && bossExist == 0) {
+                    enemyAircrafts.add(EnemyGenerator.createRandomEnemy());
+                }
+                // 根据分数判断BOSS是否生成
+                if(scoreCount >= 400 && bossExist == 0) {
+                    enemyAircrafts.add(EnemyGenerator.createBoss());
+                    bossExist = 1;
+                }
                 // 飞机射出子弹
                 shootAction();
             }
@@ -190,59 +196,6 @@ public class Game extends JPanel {
         }
     }
 
-    private MobEnemy createEnemy() {
-        double rand = Math.random();
-        if(rand < 0.8) {
-            return new NormalEnemy(
-                       (int) (Math.random() * (Main.WINDOW_WIDTH - ImageManager.MOB_ENEMY_IMAGE.getWidth())),
-                       (int) (Math.random() * Main.WINDOW_HEIGHT * 0.05),
-                       0,
-                       10,
-                       30,
-                       10
-            );
-        }
-        else {
-            return new EliteEnemy(
-                 (int) (Math.random() * (Main.WINDOW_WIDTH - ImageManager.MOB_ENEMY_IMAGE.getWidth())),
-                 (int) (Math.random() * Main.WINDOW_HEIGHT * 0.05),
-                 0,
-                 5,
-                 60,
-                 30
-            );
-        }
-    }
-
-    private BaseProp createProp(double rand, int x, int y) {
-        if(rand < 0.3) {
-            return new BloodProp(
-                    x,
-                    y,
-                    0,
-                    8,
-                    30
-            );
-        }
-        else if(rand < 0.6) {
-            return new BombProp(
-                    x,
-                    y,
-                    0,
-                    8,
-                    30
-            );
-        }
-        else {
-            return new BulletProp(
-                    x,
-                    y,
-                    0,
-                    8,
-                    30
-            );
-        }
-    }
     /**
      * 碰撞检测：
      * 1. 敌机攻击英雄
@@ -282,10 +235,21 @@ public class Game extends JPanel {
                         // TODO 获得分数，产生道具补给
                         System.out.println(enemyAircraft.getScore());
                         score += enemyAircraft.getScore();
-                        if(enemyAircraft instanceof EliteEnemy) {
+                        scoreCount += enemyAircraft.getScore();
+                        // 精英机
+                        if(enemyAircraft instanceof EliteEnemy || enemyAircraft instanceof SuperEnemy) {
                             double rand = Math.random();
                             if(rand < 0.6) {
-                                propList.add(createProp(rand, enemyAircraft.getLocationX(), enemyAircraft.getLocationY()));
+                                propList.add(PropGenerator.createRandomProp(rand, enemyAircraft.getLocationX(), enemyAircraft.getLocationY()));
+                            }
+                        }
+                        // BOSS
+                        if(enemyAircraft instanceof Boss) {
+                            bossExist = 0;
+                            scoreCount = 0;
+                            for(int i = 0; i < 3; i++) {
+                                double rand = Math.random();
+                                propList.add(PropGenerator.createRandomProp(rand, enemyAircraft.getLocationX() - 50 + (i * 50), enemyAircraft.getLocationY()));
                             }
                         }
                     }

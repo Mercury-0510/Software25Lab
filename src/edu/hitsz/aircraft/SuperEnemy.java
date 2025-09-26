@@ -1,23 +1,23 @@
 package edu.hitsz.aircraft;
 
 import edu.hitsz.bullet.BaseBullet;
-import edu.hitsz.strategy.EliteEnemyShootStrategy;
+import edu.hitsz.strategy.SuperEnemyShootStrategy;
 
 import java.util.List;
 
 /**
- * 精英敌机
+ * 超级精英敌机
  * 可射击
  *
  * @author hitsz
  */
-public class EliteEnemy extends MobEnemy {
+public class SuperEnemy extends MobEnemy {
     /**攻击方式 */
 
     /**
      * 子弹一次发射数量
      */
-    private int shootNum = 1;
+    private int shootNum = 3;
 
     /**
      * 子弹伤害
@@ -38,22 +38,22 @@ public class EliteEnemy extends MobEnemy {
      * @param score 击毁得分
      */
 
-    public EliteEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score) {
+    public SuperEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score) {
         super(locationX, locationY, speedX, speedY, hp, score);
-        // 精英敌机可以射击
-        this.shootStrategy = new EliteEnemyShootStrategy();
+        // 超级精英敌机可以散射射击
+        this.shootStrategy = new SuperEnemyShootStrategy();
     }
 
     @Override
     public List<BaseBullet> shoot() {
         return shootStrategy.shoot(
-            this.getLocationX(),
-            this.getLocationY(),
-            0,
-            this.getSpeedY() + direction * 5,
-            power,
-            shootNum,
-            direction
+                this.getLocationX(),
+                this.getLocationY(),
+                5,
+                this.getSpeedY() + direction * 5,
+                power,
+                shootNum,
+                direction
         );
     }
 

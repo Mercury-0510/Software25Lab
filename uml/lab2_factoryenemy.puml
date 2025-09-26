@@ -1,0 +1,57 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+abstract class MobEnemy {
+    - score:int
+    
+    + MobEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score)
+    + forward():void
+    + getScore():int
+}
+
+class NormalEnemy {
+    + NormalEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score)
+    + shoot():List<BaseBullet>
+}
+
+class EliteEnemy {
+    - shootNum:int = 1
+    - power:int = 30
+    - direction:int = 1
+    
+    + EliteEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score)
+    + shoot():List<BaseBullet>
+}
+
+interface EnemyAircraftFactory {
+    + createEnemyAircraft():MobEnemy
+}
+
+class NormalEnemyFactory {
+    + createEnemyAircraft():MobEnemy
+}
+
+class EliteEnemyFactory {
+    + createEnemyAircraft():MobEnemy
+}
+
+class EnemyGenerator {
+    - {static} enemyFactory:EnemyAircraftFactory
+    
+    + {static} createNormalEnemy():MobEnemy
+    + {static} createEliteEnemy():MobEnemy
+    + {static} createRandomEnemy():MobEnemy
+}
+
+MobEnemy <|-- NormalEnemy
+MobEnemy <|-- EliteEnemy
+
+EnemyAircraftFactory <|.. NormalEnemyFactory
+EnemyAircraftFactory <|.. EliteEnemyFactory
+EnemyGenerator --> EnemyAircraftFactory : 创建并管理
+EnemyAircraftFactory -right-> MobEnemy : 依赖
+
+NormalEnemyFactory .right.> NormalEnemy : 创建
+EliteEnemyFactory .right.> EliteEnemy : 创建
+
+@enduml
