@@ -81,7 +81,7 @@ public class HeroAircraft extends AbstractAircraft {
             instance = new HeroAircraft(
                 Main.WINDOW_WIDTH / 2, 
                 Main.WINDOW_HEIGHT - ImageManager.HERO_IMAGE.getHeight(), 
-                0, 0, 500);
+                0, 0, 100);
         }
         return instance;
     }
@@ -101,7 +101,7 @@ public class HeroAircraft extends AbstractAircraft {
             this.getLocationX(),
             this.getLocationY(),
             0,
-            this.getSpeedY() + direction * 20,
+            this.getSpeedY() + direction * 8,
             power,
             shootNum,
             direction
