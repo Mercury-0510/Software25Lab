@@ -6,29 +6,20 @@ import edu.hitsz.strategy.ShootStrategy;
 
 import java.util.List;
 
-/**
- * 所有种类飞机的抽象父类：
- * 敌机（BOSS, ELITE, MOB），英雄飞机
- *
- * @author hitsz
- */
 public abstract class AbstractAircraft extends AbstractFlyingObject {
-    public int getscore;
-    /**
-     * 生命值
-     */
+
     protected int maxHp;
     protected int hp;
-    
-    /**
-     * 射击策略
-     */
+    protected int power;
+    protected int direction;
     protected ShootStrategy shootStrategy;
 
-    public AbstractAircraft(int locationX, int locationY, int speedX, int speedY, int hp) {
+    public AbstractAircraft(int locationX, int locationY, int speedX, int speedY, int hp, int power, int direction) {
         super(locationX, locationY, speedX, speedY);
         this.hp = hp;
         this.maxHp = hp;
+        this.power = power;
+        this.direction = direction;
     }
 
     public void decreaseHp(int decrease){
@@ -46,22 +37,29 @@ public abstract class AbstractAircraft extends AbstractFlyingObject {
         return hp;
     }
     
-    /**
-     * 设置射击策略
-     * @param shootStrategy 射击策略
-     */
-    public void setShootStrategy(ShootStrategy shootStrategy) {
-        this.shootStrategy = shootStrategy;
+    public boolean setShootStrategy(ShootStrategy shootStrategy) {
+        if(this.shootStrategy.getClass() == shootStrategy.getClass()) {
+            this.shootStrategy.advance();
+            return false;
+        } else {
+            this.shootStrategy = shootStrategy;
+            return true;
+        }
     }
 
-
-    /**
-     * 飞机射击方法，可射击对象必须实现
-     * @return
-     *  可射击对象需实现，返回子弹
-     *  非可射击对象空实现，返回null
-     */
     public abstract List<BaseBullet> shoot();
+
+    public int getPower() {
+        return power;
+    }
+
+    public int getDirection() {
+        return direction;
+    }
+
+    public abstract int getBulletSpeedX();
+
+    public abstract int getBulletSpeedY();
 
 }
 

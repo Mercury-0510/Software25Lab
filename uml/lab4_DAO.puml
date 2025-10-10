@@ -1,0 +1,50 @@
+@startuml DAOPattern
+
+interface RankDAO {
+    + addRecord(String name, int score): void
+    + deleteRecord(int rankNum): void
+    + getAllrecord(): List<Record>
+}
+
+class RankDAOImpl {
+    - rank: List<Record>
+    - filePath: String
+    
+    + RankDAOImpl(String filePath)
+    + addRecord(String name, int score): void
+    + deleteRecord(int rankNum): void
+    + getAllrecord(): List<Record>
+    + showRank(): void
+    - updateRankNumbers(): void
+    - saveToFile(): void
+}
+
+class Record {
+    - name: String
+    - score: int
+    - time: long
+    - ranknum: int
+    
+    + Record(String name, int score, long time, int ranknum)
+    + getName(): String
+    + setName(String name): void
+    + getScore(): int
+    + setScore(int score): void
+    + getTime(): long
+    + setTime(long time): void
+    + getRankNum(): int
+    + setRankNum(int ranknum): void
+    + toString(): String
+}
+
+note top of RankDAO : **1. 数据访问对象接口（Data**\n**Access Object Interface）**：该\n接口定义了在一个模型对象上要进\n行的标准操作。
+
+note left of RankDAOImpl : **2. 数据访问对象实体类（Data**\n**Access Object concrete**\n**class）**：该类实现了上述的接\n口，该类负责从数据源获取数据，\n数据源可以是数据库、也可以是\nCSV、或者是其他的存储机制。
+
+note right of Record : **3. 模型对象/数值对象（Model**\n**Object/Value Object）**：该对象\n是简单的 POJO（Plain Ordinary\nJava Object），包含了 get/set\n方法来存储通过使用 DAO 类检索\n到的数据。
+
+RankDAO <|.. RankDAOImpl
+
+RankDAOImpl o--> Record : manages
+
+@enduml

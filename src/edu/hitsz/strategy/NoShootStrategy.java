@@ -1,6 +1,7 @@
 package edu.hitsz.strategy;
 
 import edu.hitsz.bullet.BaseBullet;
+import edu.hitsz.aircraft.AbstractAircraft;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -9,10 +10,16 @@ import java.util.List;
  * @author hitsz
  */
 public class NoShootStrategy implements ShootStrategy {
+
+    public NoShootStrategy(boolean isHeroBullet) {
+    }
     
     @Override
-    public List<BaseBullet> shoot(int locationX, int locationY, int speedX, int speedY, int power, int shootNum, int direction) {
+    public List<BaseBullet> shoot(AbstractAircraft aircraft) {
         // 不射击，返回空列表
         return new LinkedList<>();
     }
+
+    @Override
+    public void advance(){};
 }

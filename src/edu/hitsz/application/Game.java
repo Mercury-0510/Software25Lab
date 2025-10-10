@@ -4,6 +4,8 @@ import edu.hitsz.aircraft.*;
 import edu.hitsz.bullet.BaseBullet;
 import edu.hitsz.basic.AbstractFlyingObject;
 import edu.hitsz.prop.*;
+import edu.hitsz.rank.RankDAO;
+import edu.hitsz.rank.RankDAOImpl;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 
 import javax.swing.*;
@@ -47,9 +49,11 @@ public class Game extends JPanel {
     private int scoreCount = 0;
 
     /**
-     * 当前得分
+     * 当前得分与玩家名（临时）
      */
     private int score = 0;
+    private String playerName = "testUserName";
+    private String filePath = "src/edu/hitsz/rank/rank.csv";
     /**
      * 当前时刻
      */
@@ -59,7 +63,7 @@ public class Game extends JPanel {
      * 周期（ms)
      * 指示子弹的发射、敌机的产生频率
      */
-    private int cycleDuration = 600;
+    private int cycleDuration = 400;
     private int cycleTime = 0;
 
     /**
@@ -101,7 +105,6 @@ public class Game extends JPanel {
 
             // 周期性执行（控制频率）
             if (timeCountAndNewCycleJudge()) {
-                System.out.println(time);
                 // 新敌机产生
                 if(enemyAircrafts.size() <= enemyMaxNumber && bossExist == 0) {
                     enemyAircrafts.add(EnemyGenerator.createRandomEnemy());
@@ -138,7 +141,7 @@ public class Game extends JPanel {
                 // 游戏结束
                 executorService.shutdown();
                 gameOverFlag = true;
-                System.out.println("Game Over!");
+                gameOver();
             }
 
         };
@@ -196,6 +199,21 @@ public class Game extends JPanel {
         }
     }
 
+    private void gameOver() {
+        System.out.println("Game over!");
+        
+        // 创建排行榜DAO实例
+        RankDAO rankDAO = new RankDAOImpl(filePath);
+        
+        // 添加本次游戏记录到排行榜
+        rankDAO.addRecord(playerName, score);
+        
+        // 显示排行榜
+        System.out.println("\n游戏结束！最终得分: " + score);
+        rankDAO.showRank();
+
+    }
+    
     /**
      * 碰撞检测：
      * 1. 敌机攻击英雄
@@ -233,13 +251,12 @@ public class Game extends JPanel {
                     bullet.vanish();
                     if (enemyAircraft.notValid()) {
                         // TODO 获得分数，产生道具补给
-                        System.out.println(enemyAircraft.getScore());
                         score += enemyAircraft.getScore();
                         scoreCount += enemyAircraft.getScore();
                         // 精英机
                         if(enemyAircraft instanceof EliteEnemy || enemyAircraft instanceof SuperEnemy) {
                             double rand = Math.random();
-                            if(rand < 0.6) {
+                            if(rand < 0.8) {
                                 propList.add(PropGenerator.createRandomProp(rand, enemyAircraft.getLocationX(), enemyAircraft.getLocationY()));
                             }
                         }

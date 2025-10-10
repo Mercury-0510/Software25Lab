@@ -16,7 +16,7 @@ public class BossFactory implements EnemyAircraftFactory {
         return new Boss(
                 (int) (0.5 * (Main.WINDOW_WIDTH - ImageManager.MOB_ENEMY_IMAGE.getWidth())),
                 (int) (Main.WINDOW_HEIGHT * 0.15),
-                3,
+                5,
                 0,
                 300,
                 100

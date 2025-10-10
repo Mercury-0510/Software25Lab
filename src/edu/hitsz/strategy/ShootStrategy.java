@@ -1,6 +1,7 @@
 package edu.hitsz.strategy;
 
 import edu.hitsz.bullet.BaseBullet;
+import edu.hitsz.aircraft.AbstractAircraft;
 import java.util.List;
 
 /**
@@ -10,14 +11,10 @@ import java.util.List;
 public interface ShootStrategy {
     /**
      * 射击方法
-     * @param locationX 发射位置x坐标
-     * @param locationY 发射位置y坐标
-     * @param speedX 子弹x方向速度
-     * @param speedY 子弹y方向速度
-     * @param power 子弹威力
-     * @param shootNum 子弹数量
-     * @param direction 射击方向 (-1向上，1向下)
+     * @param aircraft 飞机对象，通过该对象获取位置、速度、威力等参数
      * @return 子弹列表
      */
-    List<BaseBullet> shoot(int locationX, int locationY, int speedX, int speedY, int power, int shootNum, int direction);
+    List<BaseBullet> shoot(AbstractAircraft aircraft);
+
+    void advance();
 }

@@ -1,8 +1,5 @@
-@startuml
-'https://plantuml.com/class-diagram
-'核心类继承关系图 - 仅包含aircraft、basic、bullet、prop包
+@startuml Inheritance
 
-'==== basic包 ====
 abstract class AbstractFlyingObject
 {
     # locationX:int
@@ -29,10 +26,8 @@ abstract class AbstractFlyingObject
     + vanish():void
 }
 
-'==== aircraft包 ====
 abstract class AbstractAircraft
 {
-    + getscore:int
     # maxHp:int
     # hp:int
     # shootStrategy:ShootStrategy
@@ -40,13 +35,16 @@ abstract class AbstractAircraft
     + AbstractAircraft(int locationX, int locationY, int speedX, int speedY, int hp)
     + decreaseHp(int decrease):void
     + getHp():int
-    + setShootStrategy(ShootStrategy shootStrategy):void
+    + setShootStrategy(ShootStrategy shootStrategy):boolean
     + {abstract} shoot():List<BaseBullet>
+    + {abstract} getPower():int
+    + {abstract} getDirection():int
+    + {abstract} getBulletSpeedX():int
+    + {abstract} getBulletSpeedY():int
 }
 
 class HeroAircraft {
     - {static} instance:HeroAircraft
-    - shootNum:int = 1
     - power:int = 30
     - direction:int = -1
     
@@ -55,6 +53,10 @@ class HeroAircraft {
     + {static} getInstance():HeroAircraft
     + forward():void
     + shoot():List<BaseBullet>
+    + getPower():int
+    + getDirection():int
+    + getBulletSpeedX():int
+    + getBulletSpeedY():int
 }
 
 abstract class MobEnemy {
@@ -68,41 +70,51 @@ abstract class MobEnemy {
 class NormalEnemy {
     + NormalEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score)
     + shoot():List<BaseBullet>
+    + getPower():int
+    + getDirection():int
+    + getBulletSpeedX():int
+    + getBulletSpeedY():int
 }
 
 class EliteEnemy {
-    - shootNum:int = 1
-    - power:int = 30
+    - power:int = 10
     - direction:int = 1
     
     + EliteEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score)
     + shoot():List<BaseBullet>
+    + getPower():int
+    + getDirection():int
+    + getBulletSpeedX():int
+    + getBulletSpeedY():int
 }
 
-interface EnemyAircraftFactory {
-    + createEnemyAircraft():MobEnemy
-}
-
-class NormalEnemyFactory {
-    + createEnemyAircraft():MobEnemy
-}
-
-class EliteEnemyFactory {
-    + createEnemyAircraft():MobEnemy
-}
-
-class EnemyGenerator {
-    - {static} enemyFactory:EnemyAircraftFactory
+class SuperEnemy {
+    - power:int = 10
+    - direction:int = 1
     
-    + {static} createNormalEnemy():MobEnemy
-    + {static} createEliteEnemy():MobEnemy
-    + {static} createRandomEnemy():MobEnemy
+    + SuperEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score)
+    + shoot():List<BaseBullet>
+    + getPower():int
+    + getDirection():int
+    + getBulletSpeedX():int
+    + getBulletSpeedY():int
 }
 
-'==== bullet包 ====
+class Boss {
+    - power:int = 10
+    - direction:int = 1
+    
+    + Boss(int locationX, int locationY, int speedX, int speedY, int hp, int score)
+    + shoot():List<BaseBullet>
+    + getPower():int
+    + getDirection():int
+    + getBulletSpeedX():int
+    + getBulletSpeedY():int
+}
+
 abstract class BaseBullet
 {
-    - power:int = 10
+    - power:int
     
     + BaseBullet(int locationX, int locationY, int speedX, int speedY, int power)
     + forward():void
@@ -117,7 +129,6 @@ class EnemyBullet {
     + EnemyBullet(int locationX, int locationY, int speedX, int speedY, int power)
 }
 
-'==== prop包 ====
 abstract class BaseProp
 {
     # power:int
@@ -145,6 +156,77 @@ class BulletProp
     + active(AbstractAircraft aircraft):void
 }
 
+class BulletPlusProp
+{
+    + BulletPlusProp(int locationX, int locationY, int speedX, int speedY, int power)
+    + active(AbstractAircraft aircraft):void
+}
+
+interface ShootStrategy {
+    + shoot(AbstractAircraft aircraft):List<BaseBullet>
+    + advance():void
+}
+
+class LinearShootStrategy {
+    - isHeroBullet:boolean
+    
+    + LinearShootStrategy(boolean isHeroBullet)
+    + shoot(AbstractAircraft aircraft):List<BaseBullet>
+    + advance():void
+}
+
+class CircularShootStrategy {
+    - isHeroBullet:boolean
+    - shootNum:int
+    
+    + CircularShootStrategy(boolean isHeroBullet)
+    + shoot(AbstractAircraft aircraft):List<BaseBullet>
+    + advance():void
+}
+
+class ScatterShootStrategy {
+    - isHeroBullet:boolean
+    - shootNum:int
+    
+    + ScatterShootStrategy(boolean isHeroBullet)
+    + shoot(AbstractAircraft aircraft):List<BaseBullet>
+    + advance():void
+}
+
+class NoShootStrategy {
+    + NoShootStrategy(boolean isHeroBullet)
+    + shoot(AbstractAircraft aircraft):List<BaseBullet>
+    + advance():void
+}
+
+interface EnemyAircraftFactory {
+    + createEnemyAircraft():MobEnemy
+}
+
+class NormalEnemyFactory {
+    + createEnemyAircraft():MobEnemy
+}
+
+class EliteEnemyFactory {
+    + createEnemyAircraft():MobEnemy
+}
+
+class SuperEnemyFactory {
+    + createEnemyAircraft():MobEnemy
+}
+
+class BossFactory {
+    + createEnemyAircraft():MobEnemy
+}
+
+class EnemyGenerator {
+    + {static} createNormalEnemy():MobEnemy
+    + {static} createEliteEnemy():MobEnemy
+    + {static} createSuperEnemy():MobEnemy
+    + {static} createBoss():MobEnemy
+    + {static} createRandomEnemy():MobEnemy
+}
+
 interface PropItemFactory {
     + createProp(int x, int y):BaseProp
 }
@@ -161,33 +243,51 @@ class BulletPropFactory {
     + createProp(int x, int y):BaseProp
 }
 
-class PropFactory {
-    - {static} propFactory:PropItemFactory
-    
-    + {static} createBloodProp(int x, int y):BaseProp
-    + {static} createBombProp(int x, int y):BaseProp
-    + {static} createBulletProp(int x, int y):BaseProp
+class BulletPlusPropFactory {
+    + createProp(int x, int y):BaseProp
+}
+
+class PropGenerator {
     + {static} createRandomProp(double rand, int x, int y):BaseProp
 }
 
-'==== strategy包 ====
-interface ShootStrategy {
-    + shoot(int locationX, int locationY, int speedX, int speedY, int power, int shootNum, int direction):List<BaseBullet>
+class Record {
+    - name:String
+    - score:int
+    - time:long
+    - ranknum:int
+    
+    + Record(String name, int score, long time, int ranknum)
+    + getName():String
+    + setName(String name):void
+    + getScore():int
+    + setScore(int score):void
+    + getTime():long
+    + setTime(long time):void
+    + getRankNum():int
+    + setRankNum(int ranknum):void
+    + toString():String
 }
 
-class HeroShootStrategy {
-    + shoot(int locationX, int locationY, int speedX, int speedY, int power, int shootNum, int direction):List<BaseBullet>
+interface RankDAO {
+    + addRecord(String name, int score):void
+    + deleteRecord(int rankNum):void
+    + getAllrecord():List<Record>
 }
 
-class EnemyShootStrategy {
-    + shoot(int locationX, int locationY, int speedX, int speedY, int power, int shootNum, int direction):List<BaseBullet>
+class RankDAOImpl {
+    - rank:List<Record>
+    - filePath:String
+    
+    + RankDAOImpl(String filePath)
+    + addRecord(String name, int score):void
+    + deleteRecord(int rankNum):void
+    + getAllrecord():List<Record>
+    + showRank():void
+    - updateRankNumbers():void
+    - saveToFile():void
 }
 
-class NoShootStrategy {
-    + shoot(int locationX, int locationY, int speedX, int speedY, int power, int shootNum, int direction):List<BaseBullet>
-}
-
-'==== 继承关系 ====
 AbstractFlyingObject <|-- AbstractAircraft
 AbstractFlyingObject <|-- BaseBullet
 AbstractFlyingObject <|-- BaseProp
@@ -197,6 +297,8 @@ AbstractAircraft <|-- MobEnemy
 
 MobEnemy <|-- NormalEnemy
 MobEnemy <|-- EliteEnemy
+MobEnemy <|-- SuperEnemy
+MobEnemy <|-- Boss
 
 BaseBullet <|-- HeroBullet
 BaseBullet <|-- EnemyBullet
@@ -204,36 +306,39 @@ BaseBullet <|-- EnemyBullet
 BaseProp <|-- BloodProp
 BaseProp <|-- BombProp
 BaseProp <|-- BulletProp
+BaseProp <|-- BulletPlusProp
 
-'==== 策略模式关系 ====
-ShootStrategy <|.. HeroShootStrategy
-ShootStrategy <|.. EnemyShootStrategy
+ShootStrategy <|.. LinearShootStrategy
+ShootStrategy <|.. CircularShootStrategy
+ShootStrategy <|.. ScatterShootStrategy
 ShootStrategy <|.. NoShootStrategy
-AbstractAircraft --> ShootStrategy : 使用
 
-'==== 工厂模式关系 ====
 EnemyAircraftFactory <|.. NormalEnemyFactory
 EnemyAircraftFactory <|.. EliteEnemyFactory
-EnemyGenerator --> EnemyAircraftFactory : 使用
+EnemyAircraftFactory <|.. SuperEnemyFactory
+EnemyAircraftFactory <|.. BossFactory
 
 PropItemFactory <|.. BloodPropFactory
 PropItemFactory <|.. BombPropFactory
 PropItemFactory <|.. BulletPropFactory
-PropFactory ..> PropItemFactory : 动态创建
+PropItemFactory <|.. BulletPlusPropFactory
 
-'==== 创建关系 ====
-NormalEnemyFactory ..> NormalEnemy : 创建
-EliteEnemyFactory ..> EliteEnemy : 创建
-BloodPropFactory ..> BloodProp : 创建
-BombPropFactory ..> BombProp : 创建
-BulletPropFactory ..> BulletProp : 创建
+RankDAO <|.. RankDAOImpl
 
-'==== 设计模式注解 ====
-note top of HeroAircraft : **单例模式**\n确保游戏中只有一个英雄机实例
-note top of EnemyAircraftFactory : **抽象工厂模式**\n敌机工厂接口
-note top of PropItemFactory : **抽象工厂模式**\n道具工厂接口  
-note top of ShootStrategy : **策略模式**\n实现不同的射击策略
-note right of EnemyGenerator : **工厂管理器**\n管理具体敌机工厂实例
-note right of PropFactory : **工厂管理器**\n动态创建道具工厂实例
+AbstractAircraft o--> ShootStrategy
+RankDAOImpl o--> Record
+
+EnemyGenerator ..> EnemyAircraftFactory
+PropGenerator ..> PropItemFactory
+
+NormalEnemyFactory ..> NormalEnemy
+EliteEnemyFactory ..> EliteEnemy
+SuperEnemyFactory ..> SuperEnemy
+BossFactory ..> Boss
+
+BloodPropFactory ..> BloodProp
+BombPropFactory ..> BombProp
+BulletPropFactory ..> BulletProp
+BulletPlusPropFactory ..> BulletPlusProp
 
 @enduml

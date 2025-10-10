@@ -1,0 +1,8 @@
+// 排行榜数据文件
+// 格式: 姓名,分数,时间戳,排名
+testUserName,4470,1760092295939,1
+testUserName,190,1760091729101,2
+testUserName,140,1760091600859,3
+testUserName,60,1760090379882,4
+testUserName,30,1760090372161,5
+testUserName,30,1760090384258,6
