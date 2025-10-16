@@ -13,6 +13,9 @@ public abstract class AbstractAircraft extends AbstractFlyingObject {
     protected int power;
     protected int direction;
     protected ShootStrategy shootStrategy;
+    
+    // 定时器线程
+    protected Thread powerUpTimer;
 
     public AbstractAircraft(int locationX, int locationY, int speedX, int speedY, int hp, int power, int direction) {
         super(locationX, locationY, speedX, speedY);
@@ -55,6 +58,18 @@ public abstract class AbstractAircraft extends AbstractFlyingObject {
 
     public int getDirection() {
         return direction;
+    }
+    
+    /**
+     * 设置火力道具定时器
+     * @param timer 新的定时器线程
+     */
+    public void setPowerUpTimer(Thread timer) {
+        // 如果有旧的定时器,中断它
+        if (powerUpTimer != null && powerUpTimer.isAlive()) {
+            powerUpTimer.interrupt();
+        }
+        this.powerUpTimer = timer;
     }
 
     public abstract int getBulletSpeedX();

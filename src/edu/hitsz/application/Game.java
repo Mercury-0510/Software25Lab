@@ -1,5 +1,6 @@
 package edu.hitsz.application;
 
+import edu.hitsz.RankList;
 import edu.hitsz.aircraft.*;
 import edu.hitsz.bullet.BaseBullet;
 import edu.hitsz.basic.AbstractFlyingObject;
@@ -29,6 +30,9 @@ public class Game extends JPanel {
      */
     private final ScheduledExecutorService executorService;
 
+    private final String difficulty;
+
+    private boolean soundEnabled;
     /**
      * 时间间隔(ms)，控制刷新频率
      */
@@ -40,6 +44,8 @@ public class Game extends JPanel {
     private final List<BaseBullet> enemyBullets;
     private final List<BaseProp> propList;
 
+    private MusicThread bgMusic;
+
     /**
      * 屏幕中出现的敌机最大数量
      * Boss是否出现
@@ -49,11 +55,9 @@ public class Game extends JPanel {
     private int scoreCount = 0;
 
     /**
-     * 当前得分与玩家名（临时）
+     * 当前得分
      */
     private int score = 0;
-    private String playerName = "testUserName";
-    private String filePath = "src/edu/hitsz/rank/rank.csv";
     /**
      * 当前时刻
      */
@@ -71,7 +75,14 @@ public class Game extends JPanel {
      */
     private boolean gameOverFlag = false;
 
-    public Game() {
+    public Game(String difficulty, boolean soundEnabled) {
+        this.difficulty = difficulty;
+        this.soundEnabled = soundEnabled;
+
+        if(soundEnabled) {
+            bgMusic = new MusicThread("src/videos/bgm.wav", true);
+            bgMusic.start();
+        }
         heroAircraft = HeroAircraft.getInstance();
 
         enemyAircrafts = new LinkedList<>();
@@ -113,6 +124,11 @@ public class Game extends JPanel {
                 if(scoreCount >= 400 && bossExist == 0) {
                     enemyAircrafts.add(EnemyGenerator.createBoss());
                     bossExist = 1;
+                    if(soundEnabled) {
+                        bgMusic.close();
+                        bgMusic = new MusicThread("src/videos/bgm_boss.wav", true);
+                        bgMusic.start();
+                    }
                 }
                 // 飞机射出子弹
                 shootAction();
@@ -201,17 +217,39 @@ public class Game extends JPanel {
 
     private void gameOver() {
         System.out.println("Game over!");
+        if(soundEnabled) {
+            bgMusic.close();
+            MusicThread gameOverMusic = new MusicThread("src/videos/game_over.wav", false);
+            gameOverMusic.start();
+        }
         
-        // 创建排行榜DAO实例
-        RankDAO rankDAO = new RankDAOImpl(filePath);
-        
-        // 添加本次游戏记录到排行榜
-        rankDAO.addRecord(playerName, score);
-        
-        // 显示排行榜
-        System.out.println("\n游戏结束！最终得分: " + score);
-        rankDAO.showRank();
-
+        // 使用SwingUtilities确保在EDT线程上执行GUI操作
+        SwingUtilities.invokeLater(() -> {
+            // 获取父窗口
+            JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            
+            // 使用RankList的静态方法显示输入对话框
+            String playerName = RankList.showInputDialog(parentFrame, score, difficulty);
+            
+            if (playerName != null) {
+                // 根据难度生成对应的排行榜文件路径
+                String filePath = "src/edu/hitsz/rank/rank_" + difficulty + ".csv";
+                
+                // 创建排行榜DAO实例
+                RankDAO rankDAO = new RankDAOImpl(filePath);
+                
+                // 添加本次游戏记录到排行榜
+                rankDAO.addRecord(playerName, score);
+                
+                // 显示排行榜
+                System.out.println("\n游戏结束！最终得分: " + score);
+                rankDAO.showRank();
+                
+                // 显示排行榜界面
+                RankList rankList = new RankList(rankDAO, difficulty);
+                rankList.setVisible(true);
+            }
+        });
     }
     
     /**
@@ -248,6 +286,9 @@ public class Game extends JPanel {
                     // 敌机撞击到英雄机子弹
                     // 敌机损失一定生命值
                     enemyAircraft.decreaseHp(bullet.getPower());
+                    if(soundEnabled) {
+                        new MusicThread("src/videos/bullet_hit.wav", false).start();
+                    }
                     bullet.vanish();
                     if (enemyAircraft.notValid()) {
                         // TODO 获得分数，产生道具补给
@@ -267,6 +308,11 @@ public class Game extends JPanel {
                             for(int i = 0; i < 3; i++) {
                                 double rand = Math.random();
                                 propList.add(PropGenerator.createRandomProp(rand, enemyAircraft.getLocationX() - 50 + (i * 50), enemyAircraft.getLocationY()));
+                            }
+                            if(soundEnabled) {
+                                bgMusic.close();
+                                bgMusic = new MusicThread("src/videos/bgm.wav", true);
+                                bgMusic.start();
                             }
                         }
                     }
@@ -288,6 +334,12 @@ public class Game extends JPanel {
                 // 撞击到道具
                 // 生效
                 prop.active(heroAircraft);
+                if(soundEnabled) {
+                    if(prop instanceof BombProp)
+                        new MusicThread("src/videos/bomb_explosion.wav", false).start();
+                    else
+                        new MusicThread("src/videos/get_supply.wav", false).start();
+                }
                 prop.vanish();
             }
         }
@@ -321,10 +373,25 @@ public class Game extends JPanel {
     @Override
     public void paint(Graphics g) {
         super.paint(g);
-
         // 绘制背景,图片滚动
-        g.drawImage(ImageManager.BACKGROUND_IMAGE, 0, this.backGroundTop - Main.WINDOW_HEIGHT, null);
-        g.drawImage(ImageManager.BACKGROUND_IMAGE, 0, this.backGroundTop, null);
+        switch (difficulty) {
+            case "easy":
+                g.drawImage(ImageManager.BACKGROUND_IMAGE_EZ, 0, this.backGroundTop - Main.WINDOW_HEIGHT, null);
+                g.drawImage(ImageManager.BACKGROUND_IMAGE_EZ, 0, this.backGroundTop, null);
+                break;
+            case "normal":
+                g.drawImage(ImageManager.BACKGROUND_IMAGE_NM, 0, this.backGroundTop - Main.WINDOW_HEIGHT, null);
+                g.drawImage(ImageManager.BACKGROUND_IMAGE_NM, 0, this.backGroundTop, null);
+                break;
+            case "hard":
+                g.drawImage(ImageManager.BACKGROUND_IMAGE_HD, 0, this.backGroundTop - Main.WINDOW_HEIGHT, null);
+                g.drawImage(ImageManager.BACKGROUND_IMAGE_HD, 0, this.backGroundTop, null);
+                break;
+            default:
+                g.drawImage(ImageManager.BACKGROUND_IMAGE_EZ, 0, this.backGroundTop - Main.WINDOW_HEIGHT, null);
+                g.drawImage(ImageManager.BACKGROUND_IMAGE_EZ, 0, this.backGroundTop, null);
+            break;
+        }
         this.backGroundTop += 1;
         if (this.backGroundTop == Main.WINDOW_HEIGHT) {
             this.backGroundTop = 0;

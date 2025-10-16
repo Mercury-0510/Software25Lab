@@ -18,7 +18,7 @@ public class BossFactory implements EnemyAircraftFactory {
                 (int) (Main.WINDOW_HEIGHT * 0.15),
                 5,
                 0,
-                300,
+                400,
                 100
         );
     }
