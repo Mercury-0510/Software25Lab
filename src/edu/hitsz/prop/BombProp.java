@@ -10,6 +10,8 @@ public class BombProp extends BaseProp {
 
     @Override
     public void active(AbstractAircraft aircraft) {
-        System.out.println("BombSupply active!");
+        // Bomb effect is handled in the Game class through observer pattern
+        // When the bomb prop is collected, the Game class will handle the effect
+        // by notifying observers and clearing the appropriate objects
     }
 }

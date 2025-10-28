@@ -18,9 +18,9 @@ public class Main {
         System.out.println("Hello Aircraft War");
 
         Menu menu = new Menu();
-        
+
         // Lambda表达式
-        menu.setGameStartListener((difficulty, soundEnabled) -> 
+        menu.setGameStartListener((difficulty, soundEnabled) ->
             SwingUtilities.invokeLater(() -> startGame(difficulty, soundEnabled))
         );
 
@@ -29,7 +29,7 @@ public class Main {
 
     private static void startGame(String difficulty, boolean soundEnabled) {
         System.out.println("难度: " + difficulty + ", 音效: " + soundEnabled);
-        
+
         // 获得屏幕的分辨率，初始化 Frame
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         JFrame frame = new JFrame("Aircraft War - 难度 " + difficulty);
@@ -40,7 +40,23 @@ public class Main {
                 WINDOW_WIDTH, WINDOW_HEIGHT);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        Game game = new Game(difficulty, soundEnabled);
+        // 使用模板模式创建不同难度的游戏
+        GameTemplate game;
+        switch (difficulty) {
+            case "easy":
+                game = new EasyGame(difficulty, soundEnabled);
+                break;
+            case "normal":
+                game = new NormalGame(difficulty, soundEnabled);
+                break;
+            case "hard":
+                game = new HardGame(difficulty, soundEnabled);
+                break;
+            default:
+                game = new EasyGame(difficulty, soundEnabled);
+                break;
+        }
+
         frame.add(game);
         frame.setVisible(true);
         game.action();

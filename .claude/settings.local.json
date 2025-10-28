@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(javac:*)",
+      "Bash(dir:*)",
+      "Bash(java:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(del:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

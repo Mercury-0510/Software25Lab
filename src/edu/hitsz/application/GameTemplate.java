@@ -2,11 +2,14 @@ package edu.hitsz.application;
 
 import edu.hitsz.RankList;
 import edu.hitsz.aircraft.*;
+import edu.hitsz.aircraft.SuperEnemy;
 import edu.hitsz.bullet.BaseBullet;
 import edu.hitsz.basic.AbstractFlyingObject;
 import edu.hitsz.prop.*;
 import edu.hitsz.rank.RankDAO;
 import edu.hitsz.rank.RankDAOImpl;
+import edu.hitsz.observer.BombObserver;
+import edu.hitsz.observer.BombEffectHandler;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 
 import javax.swing.*;
@@ -17,65 +20,77 @@ import java.util.List;
 import java.util.concurrent.*;
 
 /**
- * 游戏主面板，游戏启动
+ * 游戏模板抽象类，使用模板方法模式实现不同难度的游戏
  *
  * @author hitsz
  */
-public class Game extends JPanel {
+public abstract class GameTemplate extends JPanel {
 
-    private int backGroundTop = 0;
+    protected int backGroundTop = 0;
 
     /**
      * Scheduled 线程池，用于任务调度
      */
-    private final ScheduledExecutorService executorService;
+    protected final ScheduledExecutorService executorService;
 
-    private final String difficulty;
+    protected final String difficulty;
 
-    private boolean soundEnabled;
+    protected boolean soundEnabled;
     /**
      * 时间间隔(ms)，控制刷新频率
      */
-    private int timeInterval = 40;
+    protected int timeInterval = 40;
 
-    private final HeroAircraft heroAircraft;
-    private final List<MobEnemy> enemyAircrafts;
-    private final List<BaseBullet> heroBullets;
-    private final List<BaseBullet> enemyBullets;
-    private final List<BaseProp> propList;
+    protected final HeroAircraft heroAircraft;
+    protected final List<MobEnemy> enemyAircrafts;
+    protected final List<BaseBullet> heroBullets;
+    protected final List<BaseBullet> enemyBullets;
+    protected final List<BaseProp> propList;
+    
+    /**
+     * 观察者列表 - 用于炸弹效果通知
+     */
+    protected final List<BombObserver> observers;
 
-    private MusicThread bgMusic;
+    protected MusicThread bgMusic;
 
     /**
      * 屏幕中出现的敌机最大数量
      * Boss是否出现
      */
-    private int enemyMaxNumber = 5;
-    private int bossExist = 0;
-    private int scoreCount = 0;
+    protected int enemyMaxNumber = 5;
+    protected int bossExist = 0;
+    protected int scoreCount = 0;
 
     /**
-     * 当前得分
+     * 当前得分与玩家名（临时）
      */
-    private int score = 0;
+    protected int score = 0;
     /**
      * 当前时刻
      */
-    private int time = 0;
+    protected int time = 0;
 
     /**
      * 周期（ms)
      * 指示子弹的发射、敌机的产生频率
      */
-    private int cycleDuration = 400;
-    private int cycleTime = 0;
+    protected int cycleDuration = 400;
+    protected int cycleTime = 0;
+
+    /**
+     * 英雄机射击周期（ms)
+     * 控制英雄机的射击频率
+     */
+    protected int heroShootCycleDuration = 200; // 原来的一半，即2倍频率
+    protected int heroShootCycleTime = 0;
 
     /**
      * 游戏结束标志
      */
-    private boolean gameOverFlag = false;
+    protected boolean gameOverFlag = false;
 
-    public Game(String difficulty, boolean soundEnabled) {
+    public GameTemplate(String difficulty, boolean soundEnabled) {
         this.difficulty = difficulty;
         this.soundEnabled = soundEnabled;
 
@@ -89,6 +104,10 @@ public class Game extends JPanel {
         heroBullets = new LinkedList<>();
         enemyBullets = new LinkedList<>();
         propList = new LinkedList<>();
+        
+        // 初始化观察者列表并注册默认观察者
+        observers = new LinkedList<>();
+        registerObserver(new BombEffectHandler(this));
 
         /**
          * Scheduled 线程池，用于定时任务调度
@@ -103,6 +122,38 @@ public class Game extends JPanel {
 
     }
 
+    //***********************
+    //      Observer Pattern Methods (主题/Subject的方法)
+    //***********************
+
+    /**
+     * 注册观察者
+     * @param observer 要注册的观察者
+     */
+    public void registerObserver(BombObserver observer) {
+        if (observer != null && !observers.contains(observer)) {
+            observers.add(observer);
+        }
+    }
+
+    /**
+     * 移除观察者
+     * @param observer 要移除的观察者
+     */
+    public void removeObserver(BombObserver observer) {
+        observers.remove(observer);
+    }
+
+    /**
+     * 通知所有观察者
+     * 当炸弹道具被激活时调用
+     */
+    public void notifyObservers() {
+        for (BombObserver observer : observers) {
+            observer.onBombActivate(enemyAircrafts, enemyBullets);
+        }
+    }
+
     /**
      * 游戏启动入口，执行游戏逻辑
      */
@@ -113,22 +164,17 @@ public class Game extends JPanel {
 
             time += timeInterval;
 
-
             // 周期性执行（控制频率）
             if (timeCountAndNewCycleJudge()) {
                 // 新敌机产生
                 if(enemyAircrafts.size() <= enemyMaxNumber && bossExist == 0) {
-                    enemyAircrafts.add(EnemyGenerator.createRandomEnemy());
+                    enemyAircrafts.add(createEnemy());
                 }
                 // 根据分数判断BOSS是否生成
-                if(scoreCount >= 400 && bossExist == 0) {
-                    enemyAircrafts.add(EnemyGenerator.createBoss());
+                if(scoreCount >= getBossThreshold() && bossExist == 0) {
+                    enemyAircrafts.add(createBoss());
                     bossExist = 1;
-                    if(soundEnabled) {
-                        bgMusic.close();
-                        bgMusic = new MusicThread("src/videos/bgm_boss.wav", true);
-                        bgMusic.start();
-                    }
+                    onBossAppear();
                 }
                 // 飞机射出子弹
                 shootAction();
@@ -171,27 +217,91 @@ public class Game extends JPanel {
     }
 
     //***********************
+    //      Template Methods
+    //***********************
+
+    /**
+     * 模板方法：创建敌机（普通/精英/超级）
+     * 不同难度的子类需要实现此方法来定义具体的敌机生成策略
+     */
+    protected abstract MobEnemy createEnemy();
+
+    /**
+     * 模板方法：创建Boss
+     * 不同难度的子类可以重写此方法来定义不同的Boss
+     */
+    protected MobEnemy createBoss() {
+        return EnemyGenerator.createBoss();
+    }
+
+    /**
+     * 模板方法：获取Boss出现的分数阈值
+     * 不同难度的子类可以重写此方法来定义不同的阈值
+     */
+    protected int getBossThreshold() {
+        return 400;
+    }
+
+    /**
+     * 模板方法：当Boss出现时的处理
+     * 不同难度的子类可以重写此方法来定义不同的处理方式
+     */
+    protected void onBossAppear() {
+        if(soundEnabled) {
+            bgMusic.close();
+            bgMusic = new MusicThread("src/videos/bgm_boss.wav", true);
+            bgMusic.start();
+        }
+    }
+
+    /**
+     * 模板方法：更新游戏难度（基于时间）
+     * 不同难度的子类可以重写此方法来定义随时间变化的难度调整
+     */
+    protected void updateTimeBasedDifficulty() {
+        // 默认实现为空，子类可以根据需要重写
+    }
+
+    //***********************
     //      Action 各部分
     //***********************
 
     private boolean timeCountAndNewCycleJudge() {
         cycleTime += timeInterval;
+        heroShootCycleTime += timeInterval;
+
+        boolean isNewCycle = false;
         if (cycleTime >= cycleDuration) {
             // 跨越到新的周期
             cycleTime %= cycleDuration;
-            return true;
-        } else {
-            return false;
+            // 更新基于时间的难度
+            updateTimeBasedDifficulty();
+            isNewCycle = true;
         }
+
+        return isNewCycle;
+    }
+
+    /**
+     * 判断是否应该发射英雄机子弹
+     */
+    private boolean shouldHeroShoot() {
+        if (heroShootCycleTime >= heroShootCycleDuration) {
+            heroShootCycleTime %= heroShootCycleDuration;
+            return true;
+        }
+        return false;
     }
 
     private void shootAction() {
-        // TODO 敌机射击
+        // 敌机射击 - 只在新的主周期时射击
         for(MobEnemy Enemy : enemyAircrafts) {
             enemyBullets.addAll(Enemy.shoot());
         }
-        // 英雄射击
-        heroBullets.addAll(heroAircraft.shoot());
+        // 英雄射击 - 根据英雄机射击周期判断
+        if (shouldHeroShoot()) {
+            heroBullets.addAll(heroAircraft.shoot());
+        }
     }
 
     private void bulletsMoveAction() {
@@ -222,36 +332,36 @@ public class Game extends JPanel {
             MusicThread gameOverMusic = new MusicThread("src/videos/game_over.wav", false);
             gameOverMusic.start();
         }
-        
+
         // 使用SwingUtilities确保在EDT线程上执行GUI操作
         SwingUtilities.invokeLater(() -> {
             // 获取父窗口
             JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
-            
+
             // 使用RankList的静态方法显示输入对话框
             String playerName = RankList.showInputDialog(parentFrame, score, difficulty);
-            
+
             if (playerName != null) {
                 // 根据难度生成对应的排行榜文件路径
                 String filePath = "src/edu/hitsz/rank/rank_" + difficulty + ".csv";
-                
+
                 // 创建排行榜DAO实例
                 RankDAO rankDAO = new RankDAOImpl(filePath);
-                
+
                 // 添加本次游戏记录到排行榜
                 rankDAO.addRecord(playerName, score);
-                
+
                 // 显示排行榜
                 System.out.println("\n游戏结束！最终得分: " + score);
                 rankDAO.showRank();
-                
+
                 // 显示排行榜界面
                 RankList rankList = new RankList(rankDAO, difficulty);
                 rankList.setVisible(true);
             }
         });
     }
-    
+
     /**
      * 碰撞检测：
      * 1. 敌机攻击英雄
@@ -309,11 +419,7 @@ public class Game extends JPanel {
                                 double rand = Math.random();
                                 propList.add(PropGenerator.createRandomProp(rand, enemyAircraft.getLocationX() - 50 + (i * 50), enemyAircraft.getLocationY()));
                             }
-                            if(soundEnabled) {
-                                bgMusic.close();
-                                bgMusic = new MusicThread("src/videos/bgm.wav", true);
-                                bgMusic.start();
-                            }
+                            onBossDefeated();
                         }
                     }
                 }
@@ -334,15 +440,39 @@ public class Game extends JPanel {
                 // 撞击到道具
                 // 生效
                 prop.active(heroAircraft);
-                if(soundEnabled) {
-                    if(prop instanceof BombProp)
+
+                // Handle bomb prop specifically with observer pattern
+                if (prop instanceof BombProp) {
+                    // 通知所有观察者处理炸弹效果
+                    notifyObservers();
+                    if(soundEnabled) {
                         new MusicThread("src/videos/bomb_explosion.wav", false).start();
-                    else
+                    }
+                } else {
+                    if(soundEnabled) {
                         new MusicThread("src/videos/get_supply.wav", false).start();
+                    }
                 }
                 prop.vanish();
             }
         }
+    }
+
+    /**
+     * 模板方法：当Boss被击败时的处理
+     * 不同难度的子类可以重写此方法来定义不同的处理方式
+     */
+    protected void onBossDefeated() {
+        if(soundEnabled) {
+            bgMusic.close();
+            bgMusic = new MusicThread("src/videos/bgm.wav", true);
+            bgMusic.start();
+        }
+    }
+
+    public void addScore(int points) {
+        this.score += points;
+        this.scoreCount += points;
     }
 
     /**
@@ -435,6 +565,4 @@ public class Game extends JPanel {
         y = y + 20;
         g.drawString("LIFE:" + this.heroAircraft.getHp(), x, y);
     }
-
-
 }

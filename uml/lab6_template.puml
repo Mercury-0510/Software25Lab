@@ -1,0 +1,81 @@
+  @startuml
+'模板模式UML类图
+
+' 抽象类 (AbstractClass)
+abstract class GameTemplate {
+  - observers : List<BombObserver>
+  - enemyAircrafts : List<MobEnemy>
+  - heroBullets : List<BaseBullet>
+  - enemyBullets : List<BaseBullet>
+  - heroAircraft : HeroAircraft
+  __
+  + action()
+  + timeCountAndNewCycleJudge()
+  + shootAction()
+  + bulletsMoveAction()
+  + aircraftsMoveAction()
+  + crashCheckAction()
+  + postProcessAction()
+  + gameOver()
+  __
+  **模板方法**
+  {abstract} + createEnemy() : MobEnemy
+  + createBoss() : MobEnemy
+  + getBossThreshold() : int
+  + onBossAppear()
+  + onBossDefeated()
+  + updateTimeBasedDifficulty()
+}
+
+' 具体类1 (ConcreteClass1)
+class EasyGame {
+  __
+  + createEnemy() : MobEnemy
+  + updateTimeBasedDifficulty()
+}
+
+' 具体类2 (ConcreteClass2)
+class NormalGame {
+  - enemyProbabilities : double[]
+  __
+  + createEnemy() : MobEnemy
+  + updateTimeBasedDifficulty()
+  - calcEnemyProbabilities()
+}
+
+' 具体类3 (ConcreteClass3)
+class HardGame {
+  - baseEnemyMaxNumber : int
+  - increaseCycle : int
+  __
+  + createEnemy() : MobEnemy
+  + updateTimeBasedDifficulty()
+  + getBossThreshold() : int
+  - adjustEnemyMaxCount()
+}
+
+' 继承关系
+GameTemplate <|-- EasyGame
+GameTemplate <|-- NormalGame
+GameTemplate <|-- HardGame
+
+note bottom of EasyGame
+  **简单难度**
+  - 只生成普通敌机
+  - 难度不随时间变化
+end note
+
+note bottom of NormalGame
+  **普通难度**
+  - 按概率生成普通/精英/超级敌机
+  - 难度随时间提升
+end note
+
+note bottom of HardGame
+  **困难难度**
+  - 生成所有类型敌机
+  - 敌机数量随时间增加
+  - Boss出现阈值更低
+end note
+
+@enduml
