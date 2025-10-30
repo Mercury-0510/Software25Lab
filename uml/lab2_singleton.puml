@@ -1,24 +1,26 @@
-@startuml
-'https://plantuml.com/class-diagram
+@startuml singleton
 
 class HeroAircraft {
-    - {static} instance:HeroAircraft
-    - shootNum:int
-    - power:int
-    - direction:int
-    - HeroAircraft(int locationX, int locationY, int speedX, int speedY, int hp)
-    + {static} getInstance(int locationX, int locationY, int speedX, int speedY, int hp):HeroAircraft
-    + {static} getInstance():HeroAircraft
-    + forward():void
-    + shoot():List<BaseBullet>
+    - {static} instance : HeroAircraft
+    - power : int
+    - direction : int
+    - HeroAircraft(locationX, locationY, speedX, speedY, hp)
+    + {static} getInstance() : HeroAircraft
+    + {static} getInstance(locationX, locationY, speedX, speedY, hp) : HeroAircraft
+    + shoot() : List<BaseBullet>
 }
 
-class Game {
-
+class GameTemplate {
+    # heroAircraft : HeroAircraft
 }
 
-Game --> HeroAircraft
+GameTemplate --> HeroAircraft : uses
+HeroAircraft --> HeroAircraft : instance
 
-HeroAircraft --> HeroAircraft
+note right of HeroAircraft
+  单例模式
+  私有构造函数
+  静态实例
+end note
 
 @enduml

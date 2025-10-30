@@ -17,7 +17,7 @@ public class HardGame extends GameTemplate {
     
     // Boss血量
     private int bossHp = 400; // 初始Boss血量
-    private int bossHpIncrement = 100; // 每次召唤增加的血量
+    private int bossHpIncrement = 400; // 每次召唤增加的血量
 
     public HardGame(String difficulty, boolean soundEnabled) {
         super(difficulty, soundEnabled);
@@ -39,10 +39,7 @@ public class HardGame extends GameTemplate {
     @Override
     protected MobEnemy createBoss() {
         // 困难模式：创建Boss并设置递增的血量
-        MobEnemy boss = EnemyGenerator.createBoss();
-        // 设置Boss血量（通过先扣血再恢复的方式）
-        boss.decreaseHp(boss.getHp() - bossHp);
-        return boss;
+        return EnemyGenerator.createBoss(bossHp);
     }
 
     @Override

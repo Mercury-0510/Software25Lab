@@ -40,6 +40,10 @@ public abstract class AbstractAircraft extends AbstractFlyingObject {
         return hp;
     }
     
+    public int getMaxHp() {
+        return maxHp;
+    }
+    
     public boolean setShootStrategy(ShootStrategy shootStrategy) {
         if(this.shootStrategy.getClass() == shootStrategy.getClass()) {
             this.shootStrategy.advance();

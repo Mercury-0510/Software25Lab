@@ -1,121 +1,55 @@
-@startuml StrategyPattern
-
-!define RECTANGLE class
-
-class AbstractAircraft {
-    # power: int
-    # direction: int
-    # shootStrategy: ShootStrategy
-    
-    + AbstractAircraft(int locationX, int locationY, int speedX, int speedY, int hp, int power, int direction)
-    + setShootStrategy(ShootStrategy shootStrategy): boolean
-    + shoot(): List<BaseBullet>
-    + getPower(): int
-    + getDirection(): int
-    + {abstract} getBulletSpeedX(): int
-    + {abstract} getBulletSpeedY(): int
-}
+@startuml strategy
 
 interface ShootStrategy {
-    + shoot(AbstractAircraft aircraft): List<BaseBullet>
-    + advance(): void
+    + shoot(aircraft) : List<BaseBullet>
+    + advance() : void
 }
 
 class LinearShootStrategy {
-    - isHeroBullet: boolean
-    
-    + LinearShootStrategy(boolean isHeroBullet)
-    + shoot(AbstractAircraft aircraft): List<BaseBullet>
-    + advance(): void
+    - isHeroBullet : boolean
+    + shoot(aircraft) : List<BaseBullet>
 }
 
 class CircularShootStrategy {
-    - isHeroBullet: boolean
-    - shootNum: int
-    
-    + CircularShootStrategy(boolean isHeroBullet)
-    + shoot(AbstractAircraft aircraft): List<BaseBullet>
-    + advance(): void
+    - shootNum : int
+    + shoot(aircraft) : List<BaseBullet>
 }
 
 class ScatterShootStrategy {
-    - isHeroBullet: boolean
-    - shootNum: int
-    
-    + ScatterShootStrategy(boolean isHeroBullet)
-    + shoot(AbstractAircraft aircraft): List<BaseBullet>
-    + advance(): void
+    - shootNum : int
+    + shoot(aircraft) : List<BaseBullet>
 }
 
 class NoShootStrategy {
-    + NoShootStrategy(boolean isHeroBullet)
-    + shoot(AbstractAircraft aircraft): List<BaseBullet>
-    + advance(): void
+    + shoot(aircraft) : List<BaseBullet>
+}
+
+abstract class AbstractAircraft {
+    # shootStrategy : ShootStrategy
+    + setShootStrategy(strategy) : boolean
+    + shoot() : List<BaseBullet>
 }
 
 class HeroAircraft {
-    - {static} instance: HeroAircraft
-    
-    + getInstance(): HeroAircraft
-    + getInstance(int locationX, int locationY, int speedX, int speedY, int hp): HeroAircraft
-    + shoot(): List<BaseBullet>
-    + getBulletSpeedX(): int
-    + getBulletSpeedY(): int
+    + shoot() : List<BaseBullet>
 }
 
 class Boss {
-    + Boss(int locationX, int locationY, int speedX, int speedY, int hp, int score)
-    + shoot(): List<BaseBullet>
-    + getBulletSpeedX(): int
-    + getBulletSpeedY(): int
+    + shoot() : List<BaseBullet>
 }
-
-class EliteEnemy {
-    + EliteEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score)
-    + shoot(): List<BaseBullet>
-    + getBulletSpeedX(): int
-    + getBulletSpeedY(): int
-}
-
-class SuperEnemy {
-    + SuperEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score)
-    + shoot(): List<BaseBullet>
-    + getBulletSpeedX(): int
-    + getBulletSpeedY(): int
-}
-
-class NormalEnemy {
-    + NormalEnemy(int locationX, int locationY, int speedX, int speedY, int hp, int score)
-    + shoot(): List<BaseBullet>
-    + getBulletSpeedX(): int
-    + getBulletSpeedY(): int
-}
-
-note top of AbstractAircraft : **Context（上下文）**\n维护指向具体策略的引用，统一管理\npower和direction属性，通过策略\n接口与具体策略进行交流。
-
-note top of ShootStrategy : **Strategy（策略）**接口是所有具体\n策略的通用接口，接收AbstractAircraft\n对象并通过其方法获取所需参数。
-
-note right of LinearShootStrategy : **ConcreteStrategy（具体策略）**\n实现了不同的射击算法：\n线性射击、圆形射击、散射、不射击
-
-note bottom of HeroAircraft : **Client（客户端）**各种飞机类\n在构造时设置特定的射击策略，\n可在运行时通过setShootStrategy\n动态切换策略。
-
-AbstractAircraft o--> ShootStrategy : strategy
 
 ShootStrategy <|.. LinearShootStrategy
-ShootStrategy <|.. CircularShootStrategy  
+ShootStrategy <|.. CircularShootStrategy
 ShootStrategy <|.. ScatterShootStrategy
 ShootStrategy <|.. NoShootStrategy
 
+AbstractAircraft o--> ShootStrategy
 AbstractAircraft <|-- HeroAircraft
 AbstractAircraft <|-- Boss
-AbstractAircraft <|-- EliteEnemy
-AbstractAircraft <|-- SuperEnemy
-AbstractAircraft <|-- NormalEnemy
 
-HeroAircraft ..> LinearShootStrategy : power=30, direction=-1
-Boss ..> CircularShootStrategy : power=10, direction=1
-EliteEnemy ..> LinearShootStrategy : power=10, direction=1
-SuperEnemy ..> ScatterShootStrategy : power=10, direction=1
-NormalEnemy ..> NoShootStrategy : power=0, direction=1
+note right of AbstractAircraft
+  Context: 维护策略引用
+  可动态切换策略
+end note
 
 @enduml

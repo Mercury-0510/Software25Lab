@@ -1,62 +1,35 @@
-  @startuml
+  @startuml observer
 '观察者模式UML类图
 
-' Subject (主题/被观察者) - 同时也是Client
 class GameTemplate {
   - observers : List<BombObserver>
-  - enemyAircrafts : List<MobEnemy>
-  - enemyBullets : List<BaseBullet>
   __
   + registerObserver(o : BombObserver)
   + removeObserver(o : BombObserver)
   + notifyObservers()
-  + crashCheckAction()
 }
 
-' Observer (观察者接口)
 interface BombObserver {
-  + onBombActivate(enemies : List<MobEnemy>, enemyBullets : List<BaseBullet>)
+  + onBombActivate(enemies, bullets)
 }
 
-' ConcreteObserver (具体观察者)
 class BombEffectHandler {
   - game : GameTemplate
   __
-  + BombEffectHandler(game : GameTemplate)
-  + onBombActivate(enemies : List<MobEnemy>, enemyBullets : List<BaseBullet>)
+  + onBombActivate(enemies, bullets)
 }
 
-' 炸弹道具 (触发者)
 class BombProp {
-  + active(aircraft : AbstractAircraft)
+  + active(aircraft)
 }
 
-' 关系
-GameTemplate o-right-> BombObserver
+GameTemplate o--> BombObserver
 BombObserver <|.. BombEffectHandler
 GameTemplate ..> BombProp
 
-note right of GameTemplate::notifyObservers
-  **通知所有观察者**
-  for (BombObserver o : observers) {
-      o.onBombActivate(
-          enemyAircrafts, 
-          enemyBullets
-      );
-  }
-end note
-
-note left of GameTemplate
-  **Client**
-  注册观察者：
-  registerObserver(
-      new BombEffectHandler(this)
-  );
-  
-  触发通知：
-  if (prop instanceof BombProp) {
-      notifyObservers();
-  }
+note right of GameTemplate
+  Subject角色
+  触发: notifyObservers()
 end note
 
 @enduml

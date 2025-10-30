@@ -10,6 +10,7 @@ import edu.hitsz.rank.RankDAO;
 import edu.hitsz.rank.RankDAOImpl;
 import edu.hitsz.observer.BombObserver;
 import edu.hitsz.observer.BombEffectHandler;
+import edu.hitsz.effect.Particle;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 
 import javax.swing.*;
@@ -18,6 +19,7 @@ import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 游戏模板抽象类，使用模板方法模式实现不同难度的游戏
@@ -39,13 +41,14 @@ public abstract class GameTemplate extends JPanel {
     /**
      * 时间间隔(ms)，控制刷新频率
      */
-    protected int timeInterval = 40;
+    protected int timeInterval = 20;
 
     protected final HeroAircraft heroAircraft;
     protected final List<MobEnemy> enemyAircrafts;
     protected final List<BaseBullet> heroBullets;
     protected final List<BaseBullet> enemyBullets;
     protected final List<BaseProp> propList;
+    protected final List<Particle> particles;
     
     /**
      * 观察者列表 - 用于炸弹效果通知
@@ -70,20 +73,47 @@ public abstract class GameTemplate extends JPanel {
      * 当前时刻
      */
     protected int time = 0;
+    
+    /**
+     * 连击系统
+     */
+    protected int comboCount = 0;  // 连击数
+    protected int maxCombo = 0;     // 最大连击数
+    protected long lastKillTime = 0; // 上次击杀时间
+    protected static final long COMBO_TIMEOUT = 3000; // 连击超时时间(ms)
+    
+    /**
+     * Boss血条显示
+     */
+    protected Boss currentBoss = null;
+    
+    /**
+     * 特效提示
+     */
+    protected String statusMessage = "";
+    protected long messageDisplayTime = 0;
+    protected static final long MESSAGE_DURATION = 2000; // 消息显示时长(ms)
 
     /**
      * 周期（ms)
      * 指示子弹的发射、敌机的产生频率
      */
-    protected int cycleDuration = 400;
+    protected int cycleDuration = 200;
     protected int cycleTime = 0;
 
     /**
      * 英雄机射击周期（ms)
      * 控制英雄机的射击频率
      */
-    protected int heroShootCycleDuration = 200; // 原来的一半，即2倍频率
+    protected int heroShootCycleDuration = 100;
     protected int heroShootCycleTime = 0;
+
+    /**
+     * 敌机射击周期（ms)
+     * 控制敌机的射击频率
+     */
+    protected int enemyShootCycleDuration = 600;
+    protected int enemyShootCycleTime = 0;
 
     /**
      * 游戏结束标志
@@ -100,10 +130,11 @@ public abstract class GameTemplate extends JPanel {
         }
         heroAircraft = HeroAircraft.getInstance();
 
-        enemyAircrafts = new LinkedList<>();
-        heroBullets = new LinkedList<>();
-        enemyBullets = new LinkedList<>();
-        propList = new LinkedList<>();
+    enemyAircrafts = new LinkedList<>();
+    heroBullets = new LinkedList<>();
+    enemyBullets = new LinkedList<>();
+    propList = new LinkedList<>();
+    particles = new CopyOnWriteArrayList<>();
         
         // 初始化观察者列表并注册默认观察者
         observers = new LinkedList<>();
@@ -153,6 +184,101 @@ public abstract class GameTemplate extends JPanel {
             observer.onBombActivate(enemyAircrafts, enemyBullets);
         }
     }
+    
+    //***********************
+    //      游戏增强功能
+    //***********************
+    
+    /**
+     * 显示状态消息
+     */
+    protected void showMessage(String message) {
+        this.statusMessage = message;
+        this.messageDisplayTime = System.currentTimeMillis();
+    }
+    
+    /**
+     * 增加连击
+     */
+    protected void addCombo() {
+        long currentTime = System.currentTimeMillis();
+        if(currentTime - lastKillTime < COMBO_TIMEOUT) {
+            comboCount++;
+            if(comboCount > maxCombo) {
+                maxCombo = comboCount;
+            }
+            // 连击奖励提示
+            if(comboCount >= 10 && comboCount % 5 == 0) {
+                showMessage("🔥 COMBO x" + comboCount + "! 🔥");
+            }
+        } else {
+            comboCount = 1;
+        }
+        lastKillTime = currentTime;
+    }
+    
+    /**
+     * 重置连击
+     */
+    protected void resetCombo() {
+        if(System.currentTimeMillis() - lastKillTime > COMBO_TIMEOUT) {
+            comboCount = 0;
+        }
+    }
+    
+    /**
+     * 根据连击数获得额外分数
+     */
+    protected int getComboBonus(int baseScore) {
+        if(comboCount >= 20) return (int)(baseScore * 0.5);
+        if(comboCount >= 10) return (int)(baseScore * 0.3);
+        if(comboCount >= 5) return (int)(baseScore * 0.2);
+        return 0;
+    }
+    
+    /**
+     * 创建爆炸粒子效果
+     */
+    protected void createExplosion(int x, int y, Color color, int particleCount) {
+        // 更夸张的粒子效果：分两档（大颗粒 + 小颗粒），并加入随机颜色偏移与更大速度/寿命
+        int bigCount = Math.max(1, particleCount / 4);
+        int smallCount = particleCount - bigCount;
+
+        // 先产生大颗粒，增强视觉冲击
+        for (int i = 0; i < bigCount; i++) {
+            double angle = Math.random() * Math.PI * 2;
+            double speed = 4 + Math.random() * 8; // 更快
+            double vx = Math.cos(angle) * speed;
+            double vy = Math.sin(angle) * speed - Math.random() * 2; // 一部分向上
+            int life = 30 + (int)(Math.random() * 40);
+            int size = 6 + (int)(Math.random() * 8);
+            // 适当扰动颜色
+            Color c = new Color(
+                    Math.min(255, Math.max(0, color.getRed() + (int)((Math.random() - 0.5) * 60))),
+                    Math.min(255, Math.max(0, color.getGreen() + (int)((Math.random() - 0.5) * 60))),
+                    Math.min(255, Math.max(0, color.getBlue() + (int)((Math.random() - 0.5) * 60))),
+                    255
+            );
+            particles.add(new Particle(x - size/2 + (int)(Math.random()*8-4), y - size/2 + (int)(Math.random()*8-4), vx, vy, life, c, size));
+        }
+
+        // 再产生大量小颗粒，填充效果
+        for (int i = 0; i < smallCount; i++) {
+            double angle = Math.random() * Math.PI * 2;
+            double speed = 2 + Math.random() * 6; // 稍大范围速度
+            double vx = Math.cos(angle) * speed;
+            double vy = Math.sin(angle) * speed + Math.random() * 1.5;
+            int life = 15 + (int)(Math.random() * 30);
+            int size = 2 + (int)(Math.random() * 6);
+            Color c = new Color(
+                    Math.min(255, Math.max(0, color.getRed() + (int)((Math.random() - 0.5) * 40))),
+                    Math.min(255, Math.max(0, color.getGreen() + (int)((Math.random() - 0.5) * 40))),
+                    Math.min(255, Math.max(0, color.getBlue() + (int)((Math.random() - 0.5) * 40))),
+                    200
+            );
+            particles.add(new Particle(x - size/2 + (int)(Math.random()*6-3), y - size/2 + (int)(Math.random()*6-3), vx, vy, life, c, size));
+        }
+    }
 
     /**
      * 游戏启动入口，执行游戏逻辑
@@ -172,7 +298,12 @@ public abstract class GameTemplate extends JPanel {
                 }
                 // 根据分数判断BOSS是否生成
                 if(scoreCount >= getBossThreshold() && bossExist == 0) {
-                    enemyAircrafts.add(createBoss());
+                    MobEnemy boss = createBoss();
+                    enemyAircrafts.add(boss);
+                    if(boss instanceof Boss) {
+                        currentBoss = (Boss) boss;
+                        showMessage("⚠️ WARNING! BOSS APPROACHING! ⚠️");
+                    }
                     bossExist = 1;
                     onBossAppear();
                 }
@@ -188,12 +319,18 @@ public abstract class GameTemplate extends JPanel {
 
             // 道具移动
             propsMoveAction();
+            
+            // 更新粒子
+            updateParticles();
 
             // 撞击检测
             crashCheckAction();
 
             // 后处理
             postProcessAction();
+            
+            // 检查连击超时
+            resetCombo();
 
             //每个时刻重绘界面
             repaint();
@@ -269,6 +406,7 @@ public abstract class GameTemplate extends JPanel {
     private boolean timeCountAndNewCycleJudge() {
         cycleTime += timeInterval;
         heroShootCycleTime += timeInterval;
+        enemyShootCycleTime += timeInterval;
 
         boolean isNewCycle = false;
         if (cycleTime >= cycleDuration) {
@@ -292,11 +430,21 @@ public abstract class GameTemplate extends JPanel {
         }
         return false;
     }
+    
+    private boolean shouldEnemyShoot() {
+        if (enemyShootCycleTime >= enemyShootCycleDuration) {
+            enemyShootCycleTime %= enemyShootCycleDuration;
+            return true;
+        }
+        return false;
+    }
 
     private void shootAction() {
-        // 敌机射击 - 只在新的主周期时射击
-        for(MobEnemy Enemy : enemyAircrafts) {
-            enemyBullets.addAll(Enemy.shoot());
+        // 敌机射击 - 降低射击频率
+        if (shouldEnemyShoot()) {
+            for(MobEnemy enemy : enemyAircrafts) {
+                enemyBullets.addAll(enemy.shoot());
+            }
         }
         // 英雄射击 - 根据英雄机射击周期判断
         if (shouldHeroShoot()) {
@@ -323,6 +471,13 @@ public abstract class GameTemplate extends JPanel {
         for (BaseProp prop : propList) {
             prop.forward();
         }
+    }
+    
+    private void updateParticles() {
+        for(Particle particle : particles) {
+            particle.update();
+        }
+        particles.removeIf(p -> !p.isAlive());
     }
 
     private void gameOver() {
@@ -369,7 +524,6 @@ public abstract class GameTemplate extends JPanel {
      * 3. 英雄获得补给
      */
     private void crashCheckAction() {
-        // TODO 敌机子弹攻击英雄
         for (BaseBullet bullet : enemyBullets) {
             if (bullet.notValid()) {
                 continue;
@@ -401,20 +555,43 @@ public abstract class GameTemplate extends JPanel {
                     }
                     bullet.vanish();
                     if (enemyAircraft.notValid()) {
-                        // TODO 获得分数，产生道具补给
-                        score += enemyAircraft.getScore();
-                        scoreCount += enemyAircraft.getScore();
-                        // 精英机
+                        // 击杀敌机：增加连击和分数
+                        addCombo();
+                        int baseScore = enemyAircraft.getScore();
+                        int comboBonus = getComboBonus(baseScore);
+                        score += baseScore + comboBonus;
+                        scoreCount += baseScore + comboBonus;
+                        
+                        // 创建爆炸粒子效果
+                        Color explosionColor = (enemyAircraft instanceof Boss) ? 
+                            new Color(255, 0, 0) : new Color(255, 165, 0);
+                        int particleCount = (enemyAircraft instanceof Boss) ? 100 : 50;
+                        createExplosion(enemyAircraft.getLocationX(), 
+                                      enemyAircraft.getLocationY(), 
+                                      explosionColor, 
+                                      particleCount);
+                        
+                        // 精英机和超级机掉落几率较高
                         if(enemyAircraft instanceof EliteEnemy || enemyAircraft instanceof SuperEnemy) {
                             double rand = Math.random();
                             if(rand < 0.8) {
                                 propList.add(PropGenerator.createRandomProp(rand, enemyAircraft.getLocationX(), enemyAircraft.getLocationY()));
                             }
                         }
+                        // 简单模式下，普通敌机也有小概率掉落道具
+                        else if (enemyAircraft instanceof NormalEnemy && "easy".equalsIgnoreCase(difficulty)) {
+                            double rand = Math.random();
+                            // 10% 概率掉落
+                            if (rand < 0.2) {
+                                propList.add(PropGenerator.createRandomProp(5 * rand, enemyAircraft.getLocationX(), enemyAircraft.getLocationY()));
+                            }
+                        }
                         // BOSS
                         if(enemyAircraft instanceof Boss) {
+                            currentBoss = null;
                             bossExist = 0;
                             scoreCount = 0;
+                            showMessage("✨ BOSS DEFEATED! ✨");
                             for(int i = 0; i < 3; i++) {
                                 double rand = Math.random();
                                 propList.add(PropGenerator.createRandomProp(rand, enemyAircraft.getLocationX() - 50 + (i * 50), enemyAircraft.getLocationY()));
@@ -423,10 +600,18 @@ public abstract class GameTemplate extends JPanel {
                         }
                     }
                 }
-                // 英雄机 与 敌机 相撞，均损毁
+                // 英雄机 与 敌机 相撞，敌机消失，英雄扣血并产生血状粒子效果
                 if (enemyAircraft.crash(heroAircraft) || heroAircraft.crash(enemyAircraft)) {
+                    // 敌机消失
                     enemyAircraft.vanish();
-                    heroAircraft.decreaseHp(Integer.MAX_VALUE);
+                    // 英雄受到伤害，减少100HP
+                    heroAircraft.decreaseHp(100);
+                    // 产生血状粒子效果
+                    createExplosion(enemyAircraft.getLocationX(), enemyAircraft.getLocationY(), new Color(180, 0, 0), 80);
+                    // 播放爆炸音效
+                    if (soundEnabled) {
+                        new MusicThread("src/videos/bomb_explosion.wav", false).start();
+                    }
                 }
             }
         }
@@ -443,6 +628,14 @@ public abstract class GameTemplate extends JPanel {
 
                 // Handle bomb prop specifically with observer pattern
                 if (prop instanceof BombProp) {
+                    // 炸弹道具触发大范围粒子爆炸特效
+                    createExplosion(heroAircraft.getLocationX(), heroAircraft.getLocationY(), new Color(255, 215, 0), 220);
+                    for (MobEnemy enemy : enemyAircrafts) {
+                        if (!enemy.notValid()) {
+                            createExplosion(enemy.getLocationX(), enemy.getLocationY(), new Color(255, 69, 0), 120);
+                        }
+                    }
+                    showMessage("💣 MEGA BOMB! 💥");
                     // 通知所有观察者处理炸弹效果
                     notifyObservers();
                     if(soundEnabled) {
@@ -460,7 +653,6 @@ public abstract class GameTemplate extends JPanel {
 
     /**
      * 模板方法：当Boss被击败时的处理
-     * 不同难度的子类可以重写此方法来定义不同的处理方式
      */
     protected void onBossDefeated() {
         if(soundEnabled) {
@@ -534,12 +726,26 @@ public abstract class GameTemplate extends JPanel {
 
         paintImageWithPositionRevised(g, enemyAircrafts);
         paintImageWithPositionRevised(g, propList);
+        
+        // 绘制粒子效果
+        for(Particle particle : particles) {
+            particle.draw(g);
+        }
 
         g.drawImage(ImageManager.HERO_IMAGE, heroAircraft.getLocationX() - ImageManager.HERO_IMAGE.getWidth() / 2,
                 heroAircraft.getLocationY() - ImageManager.HERO_IMAGE.getHeight() / 2, null);
 
+    // 绘制英雄机血条
+    paintHeroHealthBar(g);
+
         //绘制得分和生命值
         paintScoreAndLife(g);
+        
+        //绘制Boss血条
+        paintBossHealthBar(g);
+        
+        //绘制状态消息
+        paintStatusMessage(g);
 
     }
 
@@ -556,6 +762,37 @@ public abstract class GameTemplate extends JPanel {
         }
     }
 
+    private void paintHeroHealthBar(Graphics g) {
+        int maxHp = heroAircraft.getMaxHp();
+        if (maxHp <= 0) {
+            return;
+        }
+        double hpPercent = (double) heroAircraft.getHp() / maxHp;
+        int barWidth = 80;
+        int barHeight = 8;
+    int barX = heroAircraft.getLocationX() - barWidth / 2;
+    int barY = heroAircraft.getLocationY() - ImageManager.HERO_IMAGE.getHeight() / 2 - barHeight - 6;
+
+        // 背景
+        g.setColor(new Color(60, 60, 60, 180));
+        g.fillRoundRect(barX, barY, barWidth, barHeight, 6, 6);
+
+        // 血量
+        int currentWidth = (int) (barWidth * Math.max(0, Math.min(1.0, hpPercent)));
+        if (hpPercent > 0.5) {
+            g.setColor(new Color(0, 200, 0, 220));
+        } else if (hpPercent > 0.25) {
+            g.setColor(new Color(255, 200, 0, 220));
+        } else {
+            g.setColor(new Color(255, 80, 80, 220));
+        }
+        g.fillRoundRect(barX, barY, currentWidth, barHeight, 6, 6);
+
+        // 边框
+        g.setColor(new Color(255, 255, 255, 200));
+        g.drawRoundRect(barX, barY, barWidth, barHeight, 6, 6);
+    }
+
     private void paintScoreAndLife(Graphics g) {
         int x = 10;
         int y = 25;
@@ -564,5 +801,104 @@ public abstract class GameTemplate extends JPanel {
         g.drawString("SCORE:" + this.score, x, y);
         y = y + 20;
         g.drawString("LIFE:" + this.heroAircraft.getHp(), x, y);
+        
+        // 显示难度
+        y = y + 20;
+        g.setColor(new Color(255, 215, 0));
+        g.drawString("DIFFICULTY:" + difficulty.toUpperCase(), x, y);
+        
+        // 显示时间
+        y = y + 20;
+        int seconds = time / 1000;
+        g.setColor(new Color(100, 200, 255));
+        g.drawString(String.format("TIME:%02d:%02d", seconds / 60, seconds % 60), x, y);
+        
+        // 显示连击
+        if(comboCount > 1) {
+            y = y + 20;
+            g.setColor(new Color(255, 100, 100));
+            g.setFont(new Font("SansSerif", Font.BOLD, 24));
+            g.drawString("COMBO x" + comboCount + "!", x, y);
+        }
+        
+        // 显示最大连击
+        if(maxCombo > 1) {
+            y = y + 20;
+            g.setColor(new Color(255, 255, 100));
+            g.setFont(new Font("SansSerif", Font.BOLD, 18));
+            g.drawString("MAX COMBO:" + maxCombo, x, y);
+        }
+    }
+    
+    /**
+     * 绘制Boss血条
+     */
+    private void paintBossHealthBar(Graphics g) {
+        if(currentBoss != null && currentBoss.getHp() > 0) {
+            int barWidth = 300;
+            int barHeight = 20;
+            int barX = (Main.WINDOW_WIDTH - barWidth) / 2;
+            int barY = 50;
+            
+            // 计算血量百分比（使用Boss的实际最大血量）
+            int maxHp = currentBoss.getMaxHp();
+            double hpPercent = (double)currentBoss.getHp() / maxHp;
+            // 确保血条宽度不超过最大宽度
+            int currentBarWidth = Math.min((int)(barWidth * hpPercent), barWidth);
+            
+            // 绘制背景
+            g.setColor(new Color(100, 100, 100));
+            g.fillRect(barX, barY, barWidth, barHeight);
+            
+            // 绘制血条
+            if(hpPercent > 0.5) {
+                g.setColor(new Color(0, 255, 0));
+            } else if(hpPercent > 0.25) {
+                g.setColor(new Color(255, 255, 0));
+            } else {
+                g.setColor(new Color(255, 0, 0));
+            }
+            g.fillRect(barX, barY, currentBarWidth, barHeight);
+            
+            // 绘制边框
+            g.setColor(Color.WHITE);
+            g.drawRect(barX, barY, barWidth, barHeight);
+            
+            // 绘制文字（显示当前血量/最大血量）
+            g.setFont(new Font("SansSerif", Font.BOLD, 16));
+            String text = "BOSS: " + currentBoss.getHp() + " / " + maxHp + " HP";
+            g.drawString(text, barX + (barWidth - g.getFontMetrics().stringWidth(text)) / 2, barY - 5);
+        }
+    }
+    
+    /**
+     * 绘制状态消息
+     */
+    private void paintStatusMessage(Graphics g) {
+        if(!statusMessage.isEmpty()) {
+            long currentTime = System.currentTimeMillis();
+            if(currentTime - messageDisplayTime < MESSAGE_DURATION) {
+                // 计算透明度（渐隐效果）
+                float alpha = 1.0f - (float)(currentTime - messageDisplayTime) / MESSAGE_DURATION;
+                g.setColor(new Color(255, 255, 255, (int)(alpha * 255)));
+                g.setFont(new Font("SansSerif", Font.BOLD, 32));
+                
+                // 居中显示
+                FontMetrics fm = g.getFontMetrics();
+                int textWidth = fm.stringWidth(statusMessage);
+                int x = (Main.WINDOW_WIDTH - textWidth) / 2;
+                int y = Main.WINDOW_HEIGHT / 3;
+                
+                // 绘制阴影
+                g.setColor(new Color(0, 0, 0, (int)(alpha * 150)));
+                g.drawString(statusMessage, x + 2, y + 2);
+                
+                // 绘制文字
+                g.setColor(new Color(255, 255, 255, (int)(alpha * 255)));
+                g.drawString(statusMessage, x, y);
+            } else {
+                statusMessage = "";
+            }
+        }
     }
 }

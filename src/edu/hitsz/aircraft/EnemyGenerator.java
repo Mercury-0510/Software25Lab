@@ -57,11 +57,21 @@ public class EnemyGenerator {
     }
 
     /**
-     * 创建Boss
+     * 创建Boss（默认血量400）
      * @return Boss实例
      */
     public static MobEnemy createBoss() {
         enemyFactory = new BossFactory();
+        return enemyFactory.createEnemyAircraft();
+    }
+    
+    /**
+     * 创建自定义血量的Boss
+     * @param hp Boss血量
+     * @return Boss实例
+     */
+    public static MobEnemy createBoss(int hp) {
+        enemyFactory = new BossFactory(hp);
         return enemyFactory.createEnemyAircraft();
     }
 }
